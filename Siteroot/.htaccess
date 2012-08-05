@@ -1,0 +1,10 @@
+Options -MultiViews
+setENV 'APP_DEV_STATUS' development
+RewriteEngine On
+
+RewriteCond %{REQUEST_FILENAME} !-f
+
+#RewriteCond %{REQUEST_URI} !^(calculon)
+#RewriteRule ^(.*)$ /calculon/ [R,NS]
+
+RewriteRule ^ /app/index.php [L]
