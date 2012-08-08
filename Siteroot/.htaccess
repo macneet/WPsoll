@@ -1,5 +1,5 @@
 Options -MultiViews
-setENV 'APP_DEV_STATUS' development
+setENV 'APP_DEV_STATUS' production
 RewriteEngine On
 
 RewriteCond %{REQUEST_FILENAME} !-f
