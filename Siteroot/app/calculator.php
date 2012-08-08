@@ -1,29 +1,25 @@
 <?php
 
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
-
-/**
- * Description of calculator
- *
- * @author Rene Lensink<rene@nocommerce.nl>
- */
 class calculator {
   
   public $result;
   public $inputA;
   public $inputB;
+  public $M = NULL;
+  public $operator = false;
   public $memory;
   public $success = true;
   public $message = "Ehrr, was not quite sure what to do,.. I'm guessing the answer is approximately 12.123098835341 and a half.";
   
   public $opToFunc = array(
       '+' => 'PLUS'
+      ,'PLUS' => 'PLUS'
       ,'-' => 'MINUS'
+      ,'MIN' => 'MINUS'
       ,'X' => 'MULTIPLY'
+      ,'MUL' => 'MULTIPLY'
       ,'/' => 'DIVIDE'
+      ,'DIV' => 'DIVIDE'
       ,'M+' => 'MPLUS'
       ,'M-' => 'MMINUS'
       ,'MR' => 'MREAD'
@@ -36,26 +32,30 @@ class calculator {
       ,'success' => "Well I think I got this right."
   );
 
-  public function __construct( $operator ){
-    
-    $this-> inputA  = isset( $_POST['inputA'] )?(FLOAT)$_POST['inputA']['value']:null;
-    $this-> inputB  = isset( $_POST['inputB'] )?(FLOAT)$_POST['inputB']['value']:null;
-    $this-> M       = isset( $_POST['M'] )?(FLOAT)$_POST['M']:null;
-    $this-> memory  = isset( $_SESSION['M'] )?$_SESSION['M']:0;
-    $this-> operator = $operator;
-    $this->result = 0;
-    $func = ( isset( $_POST['M'] )?$this->opToFunc[ strToupper( $operator ) ] :'calculator' . $this->opToFunc[ strToupper( $operator ) ] );
-    $this->debug = $func;
-    
-    if( method_exists( $this, $func ) ){
-      $this->banter( 'success' );
-      $this-> result = $this->$func();
-    }
-    else{
-      $this->success = false;
-    }
+  public function __construct( Silex\Application $myCalculon ){
+    $Request = $myCalculon['request'];
+    $this->operator = strToupper( $myCalculon->escape( $Request->get('operator') ) );
+    if( $this->operator ){
+      $this->inputA  = $myCalculon->escape( $Request->get('inputA') );
+      $this->inputB  = $myCalculon->escape( $Request->get('inputB') );
+      $this->M       = $myCalculon->escape( $Request->get('M') );
+      $this->memory  = $myCalculon['session']->get('M');
+      $this->result = 0;
+      $func = ( ( empty( $this->M ) || $this->M === NULL )
+                ? 'calculator' . $this->opToFunc[ $this->operator ]
+                : $this->opToFunc[ $this->operator ] );
+      $this->debug = $func;
 
-    return $this;
+      if( method_exists( $this, $func ) ){
+        $this->banter( 'success' );
+        $this-> result = $this->$func( $myCalculon );
+      }
+      else{
+        $this->success = false;
+      }
+     
+    }
+    return array( 'success' => $this->success, 'result' => $this->result, 'message' => $this->banter(), 'memory' => $this->memory , 'debug' => $this->debug );
   }  
   
   public function banter( $response = null ){
@@ -100,9 +100,9 @@ class calculator {
   
   // MEMORY FUNCTIONS
   
-  public function MCLEAR(){
+  public function MCLEAR( Silex\Application $myCalculon ){
     $this->memory = 0;
-    $_SESSION['M'] = $this->memory;
+    $myCalculon['session']->set('M', $this->memory );
     return $this->memory;
   }
   
@@ -110,15 +110,15 @@ class calculator {
     return $this-> memory;
   }
   
-  public function MPLUS(){
+  public function MPLUS( Silex\Application $myCalculon){
     $this->memory = $this-> memory + $this->M;
-    $_SESSION['M'] = $this->memory;
+    $myCalculon['session']->set('M', $this->memory );
     return $this->memory;
   }
   
-  public function MMINUS(){
+  public function MMINUS( Silex\Application $myCalculon ){
     $this->memory = $this-> memory - $this->M;
-    $_SESSION['M'] = $this->memory;
+    $myCalculon['session']->set('M', $this->memory );
     return $this->memory;
   }
   
