@@ -5,7 +5,7 @@
     var calculon = function(){
         var allMyCircuits = {};
         var clearThis = function(){
-              return {
+              var init = {
                memory   : ( function(){
                              var myMem = {
                                havingMems : false
@@ -20,7 +20,7 @@
                                 }
 
                                 $.post(
-                                  'calculon.php'
+                                  'altindex.php'
                                   ,data
                                   ,function( Response ){
                                     myMem.havingMems = Response.memory != '0';
@@ -37,9 +37,7 @@
                                   }
                                   ,'json');
                               }
-                              catch( Err ){
-                                console.error( Err );
-                              }
+                              catch( Err ){}
                             }
                              
                            myMem.fondMems = ( function(){
@@ -64,18 +62,38 @@
                              myMem.update({operator:"MR",M:true});
                              return myMem;
                }())
-               ,varA : {
-                 value : ''
-                 , clean : function(){
-                   this.value = '';
-                 }
+               ,values : function(){
+                 return {
+                   value : '0'
+                   ,clean : function(){
+                     return this.value = '0';
+                   }
+                   ,store : function( value ){
+                     return this.value = ( this.value.substr(0,1) == '0' || !this.isdec() )
+                                      ? this.value.substr(1, this.value.length ) + value
+                                      : this.value + value;
+                   }
+                   ,invert : function(){
+                     return this.value = ( this.value.substr(0,1) == '-' )
+                                      ? this.value.substr(1, this.value.length )
+                                      : ( this.value.substr(0,1) == '0' )?this.value:'-' + this.value;
+                   }
+                   ,dec : function(){
+                          
+                              return this.value = ( this.isdec )
+                                        ? this.value + "."
+                                        : this.value;
+
+                   },
+                   isdec : function(){
+                     var regEx = /[\.]/;
+                     return regEx.test( this.value );
+                   }
+                   
+                }
                }
-              ,varB : {
-                 value : ''
-                 , clean : function(){
-                   this.value = '';
-                 }
-               }
+              ,varA : false
+              ,varB : false
               ,currOperator : ''
               ,Operator : ''
               ,processing : false
@@ -92,56 +110,65 @@
                   if( value == "M+" || value == "M-" || value == "MR" ){
                     return this.memory.update({
                         operator : value
-                        ,M        : ( this.use_var_A == false && workingMem.varB.value.length > 0 )?workingMem.varB.value:workingMem.varA.value
+                        ,M       : resultsDisplay.html()
                       }
                       , function( response ){
-                        workingMem.store( response.memory );
+                        workingMem.activeVar().store( response.memory );
                         workingMem.clear('C');
                         resultsDisplayUpdate( response.memory );
                       });
                   }
-                
+
                   this.Operator = value;
-                  if( this.use_var_A === false && this.varB.value.length > 0 ){
+                  if( this.use_var_A === false && this.varB.value != '0' ){
                     return allMyCircuits.process( this.currOperator );
                   }
                   if( this.use_var_A == true ){
                     this.switchVar();
                   }
                   this.currOperator = this.Operator;
-                  resultsDisplayUpdate( this.currOperator, true );
                   return this.Operator;
               }
+              ,activeVar : function(){
+                return ( this.use_var_A )?this.varA:this.varB; 
+              }
               ,store : function( value ){
-                        var dispVal = 'Error';
-                        var checkForDecs = function(){
-                          var regEx = /[\.]/;
-                              if( regEx.test( this.value ) ){
-                                return this.value;
-                              }
-                              else{
-                                return this.value + ".";
-                              }
+
+                        var dispVal ="Error";
+                        
+                        if( value === '+/-' ){
+                          dispVal = this.activeVar().invert( value );
+                        }
+                        else if( value === '.' ){
+                          dispVal = this.activeVar().dec( value );
+                        }
+                        else{
+                          dispVal = this.activeVar().store( value );
                         }
                         
+                        var dispValstartChar = resultsDisplay.html().substr(0,1);
+                        return resultsDisplayUpdate( dispVal )
+                        
                         var inverter = function(){
-                              ( this.value.substr(0,1) !== '-' )? "-" +  this.value: this.value.substr(1, this.value.length );
-                              return this.value
+                          if( dispValstartChar == '-' ){
+                            dispVal = resultsDisplay.html().substr(1, resultsDisplay.html() );
+                          }
+                          else{
+                            resultsDisplay.html( "-" + resultsDisplay.html() );
+                          }
+                          this.value = resultsDisplay.html();
+                          
+                          return this.value;
                         }
+                        
                         var append = function(){
+                          if( dispValstartChar == '0' ){
+                            return this.value;
+                          }
                           this.value += value;
                           return this.value;
                         }
 
-                        if( value === 'invert' ){
-                          dispVal = inverter.call( ( this.use_var_A )?this.varA:this.varB );
-                        }
-                        else if( value === '.' ){
-                          dispVal = checkForDecs.call( ( this.use_var_A )?this.varA:this.varB );
-                        }
-                        else{
-                          dispVal = append.call( ( this.use_var_A )?this.varA:this.varB );
-                        }
                 
                         resultsDisplayUpdate( dispVal )
               }
@@ -182,7 +209,9 @@
                 }
               }
             }
-            
+            init.varA = init.values();
+            init.varB = init.values();
+            return init;
         };
         var workingMem = clearThis();
 
@@ -191,9 +220,9 @@
             message : "Actually you failed to enter some parts.<br/> But since the answer to Live, the universe and everything is 42, I'll give you that.<br />"
           };
           var Success = function(){
-                          workingMem.varA.clean();              //clear A
                           workingMem.use_var_A = true;
-                          workingMem.store( response.result );  //store the result value in A
+                          workingMem.activeVar().clean();
+                          workingMem.activeVar().store( response.result ) //store the result value in A
                           workingMem.use_var_A = false;
                           resultsDisplayUpdate( response.result );
                           workingMem.varB.clean();              //clear B
@@ -201,9 +230,9 @@
                           workingMem.processing = false;
           }
           var Failure = function(){
-                            workingMem.use_var_A = true;
-                            workingMem.varA.clean();              //clear A
-                            workingMem.varB.clean();              //clear B
+                          workingMem.use_var_A = true;
+                          workingMem.activeVar().clean();
+                          workingMem.activeVar().store( response.result ) //store the result value in A
                             workingMem.use_var_A = true;
                             resultsDisplay.html( '?? 42 ??' );
                             workingMem.processing = false;
@@ -217,10 +246,11 @@
           }
           resultsDisplayUpdate( '----' );
           workingMem.processing = true;
+          
           $.post(
-            'calculon.php',
+            'altindex.php',
             {
-              inputA    : workingMem.varA
+               inputA    : workingMem.varA
               ,inputB   : workingMem.varB
               ,operator : workingMem.currOperator
             }
@@ -253,26 +283,33 @@
         };
         
         var control = function( e ){
-
-          if( workingMem.processing === true ){
-            allMyCircuits.banter("Hold on for just a second, I'm re-arranging my bytes.");
-            return false;
-          }
+          var myKey = e.target;
+          (function(){
+              $('.operator').each( function(){
+                $(this).removeClass('active');
+              });
+          }());
           
-          if( e.target === this ){
+          
+          if( myKey === this ){
             allMyCircuits.banter("I'm guessing your eye-hand co&ouml;rdination needs some work.");
             return false;
           }
           
-          var keyPressed = e.target.textContent.trim();
+          var keyPressed = myKey.textContent.trim();
           
-          var regExInvert = /^(\+\/\-)$/;
-          if( regExInvert.test( keyPressed ) ){
-            dispVal = workingMem.store( 'invert' )
-            resultsDisplayUpdate( dispVal );
-            return workingMem;
+          if( workingMem.processing === true && keyPressed != 'CE' ){
+            allMyCircuits.banter("Hold on for just a second, I'm re-arranging my bytes.");
+            return false;
           }
-          var regExNum = /^(\d)|(\.)$/;
+          
+          if( $( myKey ).hasClass('operator' ) ){
+              $( myKey ).addClass('active');
+              workingMem.operator( keyPressed );
+              return workingMem;
+          }
+          
+          var regExNum = /^(\d)|(\.)|(\+\/\-)$/;
           if( regExNum.test( keyPressed ) ){
               var dispVal = workingMem.store( keyPressed );
               return workingMem;
@@ -282,7 +319,7 @@
               workingMem.clear( keyPressed );
               return false;
           }
-          var regExMem = /^(M)|(\+)|(\-)|(\x)|(\/)$/;
+          var regExMem = /^(M.+)$/;
           if( regExMem.test( keyPressed ) ){
               workingMem.operator( keyPressed );
               return workingMem;
