@@ -77,7 +77,9 @@
       position: relative;
       box-shadow: 0 4px 4px -3px #0B2F3A;
     }
-    
+    div#calculon.silex{
+      background-image: url("/style/images/calculon_silex.png");
+    }
     div#resultdisplayGlass,
     div#resultdisplay{
       background: none repeat scroll 0 0 transparent;
@@ -220,7 +222,9 @@
     ul#keypad li:hover{
       background-color: #FFBF00;
     }
-    ul#keypad li:active{
+    ul#keypad li:active,
+    ul#keypad li.active{
+      background-color: #FFBF00;
       box-shadow: none;
     }
     ul#memorybench.inuse li{
